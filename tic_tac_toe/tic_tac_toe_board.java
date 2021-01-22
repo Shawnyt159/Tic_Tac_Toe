@@ -14,43 +14,33 @@ import java.awt.image.BufferedImage;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
-import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+import javax.swing.JButton;
 
-public class tic_tac_toe_board_Multiplayer implements MouseListener{
+public class tic_tac_toe_board implements MouseListener{
+
 	private JFrame frame;
 	private String board_file_path = "/images/board.png";
 	private String x_file_path = "/images/X.png";
 	private String o_file_path = "/images/O.png";
-	private String player_1_file_path;
-	private String player_2_file_path;
-	private char player_1;
-	private char player_2;
-	private boolean player_1_turn = true;
+	private String player_file_path;
+	private String ai_file_path;
+	private AI ai_logic;
+	private char player;
+	private char ai;
 	private JLabel[][] board = new JLabel[3][3];
 	private char[][] char_board = new char[3][3];
 
 	/**
 	 * Create the application.
 	 */
-	public tic_tac_toe_board_Multiplayer(JFrame previous_frame, int player_letter) {
-		if(player_letter == 0) {
-			this.player_1_file_path = this.x_file_path;
-			this.player_1 = 'x';
-			this.player_2_file_path = this.o_file_path;
-			this.player_2 = 'o';
-		}
-		else {
-			this.player_2_file_path = this.x_file_path;
-			this.player_2 = 'x';
-			this.player_1_file_path = this.o_file_path;
-			this.player_1 = 'o';
-		}
-		initialize(previous_frame);	
+	public tic_tac_toe_board(JFrame previous_frame, int player_letter, int ai_logic) {
+		initialize(previous_frame);
+		Set_Up_Player_And_AI_Settings(player_letter, ai_logic);
 	}
 
 	/**
@@ -64,7 +54,6 @@ public class tic_tac_toe_board_Multiplayer implements MouseListener{
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(null);
 		
-		Board_Logic.Fill_Char_Array(this.char_board);
 		JLabel title_label = new JLabel("Tic-Tac-Toe");
 		title_label.setForeground(Color.WHITE);
 		title_label.setFont(new Font("Ebrima", Font.BOLD | Font.ITALIC, 20));
@@ -125,19 +114,10 @@ public class tic_tac_toe_board_Multiplayer implements MouseListener{
 		label_2_2.setBounds(539, 362, 172, 136);
 		x_o_panel.add(label_2_2);
 		
-		int row_index = 0;
-		int column_index = 0;
-		for(Component label: x_o_panel.getComponents()) {
-			this.board[row_index][column_index] = (JLabel) label;
-			if(column_index == 2) {
-				column_index = 0;
-				row_index++;
-				label.addMouseListener(this);
-				continue;
-			}
-			column_index++;
-			label.addMouseListener(this);
-		}
+		/**
+		 * Setting up the board JLabels, and char board.
+		 */
+		Set_Up_Boards(x_o_panel);
 		
 		JPanel option_panel = new JPanel();
 		option_panel.setBounds(10, 618, 766, 35);
@@ -160,6 +140,56 @@ public class tic_tac_toe_board_Multiplayer implements MouseListener{
 		this.frame.setVisible(true);
 	}
 	
+	/**
+	 * Setting up the board JLabels, and char board.
+	 */
+	private void Set_Up_Boards(JPanel x_o_panel) {
+		int row_index = 0;
+		int column_index = 0;
+		for(Component label: x_o_panel.getComponents()) {
+			this.board[row_index][column_index] = (JLabel) label;
+			if(column_index == 2) {
+				column_index = 0;
+				row_index++;
+				label.addMouseListener(this);
+				continue;
+			}
+			column_index++;
+			label.addMouseListener(this);
+		}
+		Board_Logic.Fill_Char_Array(this.char_board);
+	}
+	
+	/**
+	 * Initializing the player letter, and the AI logic to use.
+	 */
+	private void Set_Up_Player_And_AI_Settings(int player_letter, int ai_logic) {
+		if(player_letter == 0) {
+			this.player = 'x';
+			this.ai = 'o';
+			this.player_file_path = this.x_file_path;
+			this.ai_file_path = this.o_file_path;
+		}
+		else {
+			this.player = 'o';
+			this.ai = 'x';	
+			this.player_file_path = this.o_file_path;
+			this.ai_file_path = this.x_file_path;
+		}
+		if(ai_logic == 0) {
+			this.ai_logic = new Easy_AI(this.player);
+		}
+		else if(ai_logic == 1) {
+			this.ai_logic = new Medium_AI(this.player);
+		}
+		else {
+			this.ai_logic = new Hard_AI(this.player);
+		}
+	}
+	
+	/**
+	 * Sets an image to a JLabel.
+	 */
 	private void set_image_to_label(JLabel image_label, String file_name) {
 		BufferedImage image = null;
 		try {
@@ -172,37 +202,58 @@ public class tic_tac_toe_board_Multiplayer implements MouseListener{
 		}
 	}
 
+	/**
+	 * Mouse clicked event, added to the JLabels in the GUI which represent the board.
+	 */
 	@Override
 	public void mouseClicked(MouseEvent arg0) {
 		JLabel label = (JLabel) arg0.getSource();
 		if(label.getIcon() == null) {
-			if(this.player_1_turn == true) {
-				set_image_to_label(label, this.player_1_file_path);
-				int[] index = Board_Logic.Find_Index(this.board, label);
-				this.char_board[index[0]][index[1]] = this.player_1;
-				this.player_1_turn = false;
+			Player_Move(label);
+			if(Check_For_Win() == false) {
+				AI_Move();
 			}
-			else {
-				set_image_to_label(label, this.player_2_file_path);
-				int[] index = Board_Logic.Find_Index(board, label);
-				this.char_board[index[0]][index[1]] = this.player_2;
-				this.player_1_turn = true;
-			}
+			Check_For_Win();
 		}
+	}
+	/**
+	 * Showing player move on the board.
+	 */
+	private void Player_Move(JLabel label) {
+		set_image_to_label(label, this.player_file_path);
+		int[] index = Board_Logic.Find_Index(this.board, label);
+		this.char_board[index[0]][index[1]] = this.player;
+	}
+	
+	/**
+	 * Showing AI move.
+	 */
+	private void AI_Move() {
+		int[] index = ai_logic.Make_Move(this.char_board);
+		set_image_to_label(this.board[index[0]][index[1]], this.ai_file_path);
+		this.char_board[index[0]][index[1]] = this.ai;
+	}
+	
+	/**
+	 * Check the board for win. 
+	 */
+	private boolean Check_For_Win() {
 		char possible_win = Board_Logic.Has_Won(this.char_board);
 		if(possible_win == 'x' || possible_win == 'o') {
 			JOptionPane.showMessageDialog(null, possible_win + " HAS WON!");
 			Board_Logic.Reset_Board(this.board, this.char_board);
-			this.player_1_turn = true;
+			this.ai_logic.Reset();
+			return true;
 		}
 		else if(possible_win =='f') {
 			JOptionPane.showMessageDialog(null, "TIE!");
 			Board_Logic.Reset_Board(this.board, this.char_board);
-			this.player_1_turn = true;
+			this.ai_logic.Reset();
+			return true;
 		}
-			
+		return false;
 	}
-
+	
 	@Override
 	public void mouseEntered(MouseEvent arg0) {
 		// TODO Auto-generated method stub

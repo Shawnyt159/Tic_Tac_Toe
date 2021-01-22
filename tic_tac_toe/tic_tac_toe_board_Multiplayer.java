@@ -14,36 +14,52 @@ import java.awt.image.BufferedImage;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
-import javax.swing.JButton;
 
-public class tic_tac_toe_board implements MouseListener{
-
+public class tic_tac_toe_board_Multiplayer implements MouseListener{
 	private JFrame frame;
 	private String board_file_path = "/images/board.png";
 	private String x_file_path = "/images/X.png";
 	private String o_file_path = "/images/O.png";
-	private String player_file_path;
-	private String ai_file_path;
-	private AI ai_logic;
-	private char player;
-	private char ai;
+	private String player_1_file_path;
+	private String player_2_file_path;
+	private char player_1;
+	private char player_2;
+	private boolean player_1_turn = true;
 	private JLabel[][] board = new JLabel[3][3];
 	private char[][] char_board = new char[3][3];
 
 	/**
 	 * Create the application.
 	 */
-	public tic_tac_toe_board(JFrame previous_frame, int player_letter, int ai_logic) {
-		initialize(previous_frame);
-		Give_Correct_Values(player_letter, ai_logic);
-		
+	public tic_tac_toe_board_Multiplayer(JFrame previous_frame, int player_letter) {
+		Set_Up_Player_Settings(player_letter);
+		initialize(previous_frame);	
 	}
-
+	
+	/**
+	 * Initialize player settings.(Who is X and who is O).
+	 */
+	private void Set_Up_Player_Settings(int player_letter) {
+		if(player_letter == 0) {
+			this.player_1_file_path = this.x_file_path;
+			this.player_1 = 'x';
+			this.player_2_file_path = this.o_file_path;
+			this.player_2 = 'o';
+		}
+		else {
+			this.player_2_file_path = this.x_file_path;
+			this.player_2 = 'x';
+			this.player_1_file_path = this.o_file_path;
+			this.player_1 = 'o';
+		}
+	}
+	
 	/**
 	 * Initialize the contents of the frame.
 	 */
@@ -55,7 +71,6 @@ public class tic_tac_toe_board implements MouseListener{
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(null);
 		
-		Board_Logic.Fill_Char_Array(this.char_board);
 		JLabel title_label = new JLabel("Tic-Tac-Toe");
 		title_label.setForeground(Color.WHITE);
 		title_label.setFont(new Font("Ebrima", Font.BOLD | Font.ITALIC, 20));
@@ -116,19 +131,10 @@ public class tic_tac_toe_board implements MouseListener{
 		label_2_2.setBounds(539, 362, 172, 136);
 		x_o_panel.add(label_2_2);
 		
-		int row_index = 0;
-		int column_index = 0;
-		for(Component label: x_o_panel.getComponents()) {
-			this.board[row_index][column_index] = (JLabel) label;
-			if(column_index == 2) {
-				column_index = 0;
-				row_index++;
-				label.addMouseListener(this);
-				continue;
-			}
-			column_index++;
-			label.addMouseListener(this);
-		}
+		/**
+		 * Setting up the boards.
+		 */
+		Set_Up_Boards(x_o_panel);
 		
 		JPanel option_panel = new JPanel();
 		option_panel.setBounds(10, 618, 766, 35);
@@ -151,31 +157,29 @@ public class tic_tac_toe_board implements MouseListener{
 		this.frame.setVisible(true);
 	}
 	
-	private void Give_Correct_Values(int player_letter, int ai_logic) {
-		if(player_letter == 0) {
-			this.player = 'x';
-			this.ai = 'o';
-			this.player_file_path = this.x_file_path;
-			this.ai_file_path = this.o_file_path;
+	/**
+	 * Setting up the board JLabels, and char board.
+	 */
+	private void Set_Up_Boards(JPanel x_o_panel) {
+		int row_index = 0;
+		int column_index = 0;
+		for(Component label: x_o_panel.getComponents()) {
+			this.board[row_index][column_index] = (JLabel) label;
+			if(column_index == 2) {
+				column_index = 0;
+				row_index++;
+				label.addMouseListener(this);
+				continue;
+			}
+			column_index++;
+			label.addMouseListener(this);
 		}
-		else {
-			this.player = 'o';
-			this.ai = 'x';	
-			this.player_file_path = this.o_file_path;
-			this.ai_file_path = this.x_file_path;
-		}
-		if(ai_logic == 0) {
-			this.ai_logic = new Easy_AI(this.player);
-			System.out.println("Here");
-		}
-		else if(ai_logic == 1) {
-			this.ai_logic = new Medium_AI(this.player);
-		}
-		else {
-			this.ai_logic = new Hard_AI(this.player);
-		}
+		Board_Logic.Fill_Char_Array(this.char_board);
 	}
 	
+	/**
+	 * Sets an image to a JLabel.
+	 */
 	private void set_image_to_label(JLabel image_label, String file_name) {
 		BufferedImage image = null;
 		try {
@@ -188,45 +192,59 @@ public class tic_tac_toe_board implements MouseListener{
 		}
 	}
 
+	/**
+	 * Mouse clicked event, added to the JLabels in the GUI which represent the board.
+	 */
 	@Override
 	public void mouseClicked(MouseEvent arg0) {
 		JLabel label = (JLabel) arg0.getSource();
 		if(label.getIcon() == null) {
-			// Player move.
-			set_image_to_label(label, this.player_file_path);
-			int[] index = Board_Logic.Find_Index(this.board, label);
-			this.char_board[index[0]][index[1]] = this.player;
-			//Check for win. 
-			char possible_win = Board_Logic.Has_Won(this.char_board);
-			if(possible_win == 'x' || possible_win == 'o') {
-				JOptionPane.showMessageDialog(null, possible_win + " HAS WON!");
-				Board_Logic.Reset_Board(this.board, this.char_board);
-				this.ai_logic.Reset();
-			}
-			else if(possible_win =='f') {
-				JOptionPane.showMessageDialog(null, "TIE!");
-				Board_Logic.Reset_Board(this.board, this.char_board);
-				this.ai_logic.Reset();
+			if(this.player_1_turn == true) {
+				Show_Move_On_Board(label, this.player_1_file_path, this.player_1, this.player_1_turn);
 			}
 			else {
-				//AI Move.
-				index = ai_logic.Make_Move(this.char_board);
-				set_image_to_label(this.board[index[0]][index[1]], this.ai_file_path);
-				this.char_board[index[0]][index[1]] = this.ai;
-				//Check for win.
-				possible_win = Board_Logic.Has_Won(this.char_board);
-				if(possible_win == 'x' || possible_win == 'o') {
-					JOptionPane.showMessageDialog(null, possible_win + " HAS WON!");
-					Board_Logic.Reset_Board(this.board, this.char_board);
-					this.ai_logic.Reset();
-				}
-				else if(possible_win =='f') {
-					JOptionPane.showMessageDialog(null, "TIE!");
-					Board_Logic.Reset_Board(this.board, this.char_board);
-					this.ai_logic.Reset();
-				}
+				Show_Move_On_Board(label, this.player_2_file_path, this.player_2, this.player_1_turn);
 			}
+			Check_For_Win();
 		}
+	}
+	
+	/**
+	 * Showing the move made on the board, and adding the move to the character board.
+	 */
+	private void Show_Move_On_Board(JLabel label, String player_file_path, char player_character, boolean player_turn) {
+		set_image_to_label(label, player_file_path);
+		int[] index = Board_Logic.Find_Index(this.board, label);
+		this.char_board[index[0]][index[1]] = player_character;
+		if(player_turn == true) {
+			this.player_1_turn = false;
+		}
+		else {
+			this.player_1_turn = true;
+		}
+	}
+	
+	/**
+	 * Checking the board for a win.
+	 */
+	private void Check_For_Win() {
+		char possible_win = Board_Logic.Has_Won(this.char_board);
+		if(possible_win == 'x' || possible_win == 'o') {
+			JOptionPane.showMessageDialog(null, possible_win + " HAS WON!");
+			Reset_Board();
+		}
+		else if(possible_win =='f') {
+			JOptionPane.showMessageDialog(null, "TIE!");
+			Reset_Board();
+		}
+	}
+	
+	/**
+	 * Resetting the GUI board, and the char board.
+	 */
+	private void Reset_Board() {
+		Board_Logic.Reset_Board(this.board, this.char_board);
+		this.player_1_turn = true;
 	}
 
 	@Override
